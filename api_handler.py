@@ -4,14 +4,13 @@ import json
 import ast
 import re
 import conf
-import textract
 from os import listdir
-from os.path import isfile, join
+from os.path import isfile
 from shutil import copyfile
 
 OK_MESSAGE = json.dumps({'msg': 'True'})
 import os
-import time, datetime
+import time
 
 SAVE_PATH = 'uploads/'
 STOP_LIST = set(['json', 'txt', 'xlsx'])
@@ -63,7 +62,7 @@ class db_handler(object):
     def __init__(self):
         self.user = 'root'
         self.password = ''
-        self.host = '192.168.1.30'
+        self.host = 'localhost'
         self.database = 'dataretrieval'
         self.port = '3306'
         self.cnx = None
@@ -77,7 +76,7 @@ class db_handler(object):
                                                port=self.port)
             print('yes!')
         except Exception as e:
-            return create_res_obj({'traceback': traceback.format_exc(), 'msg': "{} {}".format(e.message, e.args)},
+            return create_res_obj({'traceback': traceback.format_exc(), 'msg': " {}".format( e.args)},
                                   success=False)
 
     def disconnect(self):
@@ -179,10 +178,10 @@ def get_file_extention(file_name):
 
 
 def parse_file(file_path):
-    if os.path.splitext(file_path)[1] == '.txt':
+    if os.path.splitext(file_path)[-1] == '.txt':
         return parse_text(file_path)
-    else:
-        return textract.process(file_path)
+    # else:
+    #     return textract.process(file_path)
 
 
 def index_text(text):
@@ -273,7 +272,7 @@ def _get_doc_id_by_file_name(docname):
 
 def update_words_to_db(words_dict, file_name, path, author, year, intro):
     if not _is_duplicated_file(file_name):
-        for key in sorted(words_dict.iterkeys()): _update_word(key, words_dict[key], file_name, path,
+        for key in sorted(words_dict.keys()): _update_word(key, words_dict[key], file_name, path,
                                                                author, year, intro)
     return _get_doc_id_by_file_name(file_name)
 
@@ -619,7 +618,7 @@ def res_query(query):
 
         print(words_dict)
         print(words_list)
-        for k, v in words_dict.iteritems():
+        for k, v in words_dict.items():
             if k == 'stoppedword':
                 ast_list = create_ast_list([])
             else:
@@ -651,7 +650,7 @@ def res_query(query):
         db.disconnect()
         return create_res_obj(data)
     except Exception as e:
-        return create_res_obj({'traceback': traceback.format_exc(), 'msg': "{} {}".format(e.message, e.args)},
+        return create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format( e.args)},
                               success=False)
 
 
@@ -863,7 +862,7 @@ def hide_doc(docname):
 
         return create_res_obj(data)
     except Exception as e:
-        return create_res_obj({'traceback': traceback.format_exc(), 'msg': "{} {}".format(e.message, e.args)},
+        return create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format( e.args)},
                               success=False)
 
 
@@ -891,7 +890,7 @@ def get_all_docs():
         db.disconnect()
         return create_res_obj(data)
     except Exception as e:
-        return create_res_obj({'traceback': traceback.format_exc(), 'msg': "{} {}".format(e.message, e.args)},
+        return create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
                               success=False)
 
 
@@ -927,7 +926,7 @@ def restore_doc(docname):
 
         return create_res_obj(data)
     except Exception as e:
-        return create_res_obj({'traceback': traceback.format_exc(), 'msg': "{} {}".format(e.message, e.args)},
+        return create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
                               success=False)
 
 
@@ -954,5 +953,5 @@ def getfile(docname):
         })
 
     except Exception as e:
-        return create_res_obj({'traceback': traceback.format_exc(), 'msg': "{} {}".format(e.message, e.args)},
+        return create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
                               success=False)

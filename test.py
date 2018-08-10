@@ -6,6 +6,7 @@ import api_handler
 import conf
 import traceback
 import threading
+import scrap
 
 app = Flask(__name__)
 CORS(app)
@@ -89,11 +90,17 @@ def showall():
         return jsonify(api_handler.get_all_docs())
     return jsonify(json.dumps({'msg': 'dude this is POST only!@'}))
 
-
 if __name__ == '__main__':
+    api_handler.init_db()
     # try:
     #     threading.Thread(target=api_handler.lisener, args=(conf.TMP_FOLDER,)).start()
     # except:
     #     print(traceback.format_exc())
-    api_handler.lisener(conf.TMP_FOLDER)
-    app.run(host=conf.HOST)
+    # try:
+    #     threading.Thread(target=scrap.get_articles, args=()).start()
+    # except:
+    #     print(traceback.format_exc())
+    scrap.get_articles()
+    # api_handler.lisener(conf.TMP_FOLDER)
+    app.run(host='0.0.0.0', port='8080')
+

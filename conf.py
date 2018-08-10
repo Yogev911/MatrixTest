@@ -30,3 +30,4 @@ HIDDEN_FILES_ID = [12]
 
 HOST='localhost'
 
+SITES = ['https://edition.cnn.com/', 'http://www.foxnews.com/']
