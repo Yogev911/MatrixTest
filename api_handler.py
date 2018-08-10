@@ -63,7 +63,7 @@ class db_handler(object):
     def __init__(self):
         self.user = 'root'
         self.password = ''
-        self.host = 'localhost'
+        self.host = '192.168.1.30'
         self.database = 'dataretrieval'
         self.port = '3306'
         self.cnx = None
