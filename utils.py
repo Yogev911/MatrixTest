@@ -1,7 +1,6 @@
 import json
 
 
-
 def create_res_obj(data, success=True):
     '''
     create return obj with array of data.
@@ -36,4 +35,4 @@ def chunks(l, n):
     # For item i in a range that is a length of l,
     for i in range(0, len(l), n):
         # Create an index range for l of n items:
-        yield l[i:i+n]
+        yield l[i:i + n]

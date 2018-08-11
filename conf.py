@@ -35,5 +35,6 @@ SITES = ['https://edition.cnn.com/', 'http://www.foxnews.com/']
 
 OK_MESSAGE = json.dumps({'msg': 'True'})
 
+#number of workers will be len(total)/MAX_ITEMS
+MAX_ITEMS = 25
 
-MAX_ITEMS = 200

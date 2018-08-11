@@ -93,20 +93,5 @@ def showall():
     return jsonify(json.dumps({'msg': 'dude this is POST only!@'}))
 
 
-if __name__ == '__main__':
-    api_handler.db.init_db()
-    # try:
-    #     threading.Thread(target=api_handler.lisener, args=(conf.TMP_FOLDER,)).start()
-    # except:
-    #     print(traceback.format_exc())
-    # try:
-    #     threading.Thread(target=scrap.get_articles, args=()).start()
-    # except:
-    #     print(traceback.format_exc())
-    scrapper = multiprocessing.Process(target=scrap.get_articles)
-    scrapper.start()
-    listener = multiprocessing.Process(target=api_handler.lisener, args=(conf.TMP_FOLDER,))
-    listener.start()
-    # scrap.get_articles()
-    # api_handler.lisener(conf.TMP_FOLDER)
+def run():
     app.run(host='0.0.0.0', port='8080')

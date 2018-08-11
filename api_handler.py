@@ -2,11 +2,6 @@ import traceback
 import ast
 import re
 import os
-from os import listdir
-from os.path import isfile
-from shutil import copyfile
-import time
-
 from db_util import DB_Handler
 import utils
 import conf
@@ -196,7 +191,8 @@ def _insert_row_doc_tbl(docname, author, path, year, intro, url):
     if docid:
         return docid
     else:
-        query = ("INSERT INTO doc_tbl (docname, author,path, year, intro, hidden, url) VALUES (%s , %s , %s, %s , %s,%s,%s)")
+        query = (
+            "INSERT INTO doc_tbl (docname, author,path, year, intro, hidden, url) VALUES (%s , %s , %s, %s , %s,%s,%s)")
         data = (docname, author, path, year, intro, 0, url)
         db.run_query(query, data, commit=True)
 
@@ -684,25 +680,3 @@ def getfile(docname):
     except Exception as e:
         return utils.create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
                                     success=False)
-
-
-def lisener(tmp_folder):
-    target_tmp = os.path.join(os.path.dirname(os.path.abspath(__file__)), tmp_folder)
-    if not os.path.exists(target_tmp):
-        os.makedirs(target_tmp)
-    while True:
-        print('searching for files....')
-        files = [f for f in listdir(target_tmp) if isfile(os.path.join(target_tmp, f))]
-        if files:
-            target = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
-            print(target)
-            for file in files:
-                path = os.path.join(target_tmp, file)
-                print('working on file{}'.format(path))
-                uuid = str(time.time()).split('.')[0]
-                filename = uuid + file
-                target_path = os.path.join(target, filename)
-                copyfile(path, target_path)
-                res_upload_file(file, target_path)
-                os.remove(path)
-        time.sleep(10)

@@ -82,14 +82,14 @@ class DB_Handler(object):
         query = "DELETE FROM `hidden_files`"
         self.run_query(query)
 
-        target_uploads = os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.UPLOAD_FOLDER)
-        files = [f for f in listdir(target_uploads) if isfile(os.path.join(target_uploads, f))]
-        if files:
-            for file in files:
-                path = os.path.join(target_uploads, file)
-                print('delete file {}'.format(path))
-                os.remove(path)
-        print('folder {} is empty'.format(target_uploads))
+        # target_uploads = os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.UPLOAD_FOLDER)
+        # files = [f for f in listdir(target_uploads) if isfile(os.path.join(target_uploads, f))]
+        # if files:
+        #     for file in files:
+        #         path = os.path.join(target_uploads, file)
+        #         print('delete file {}'.format(path))
+        #         os.remove(path)
+        # print('folder {} is empty'.format(target_uploads))
 
     def run_query(self, query, params=None, one=False, many=False, commit=False):
         '''
