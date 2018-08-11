@@ -21,10 +21,6 @@ def res_upload_file(file_name, path):
         return {'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)}
 
 
-def get_file_extention(file_name):
-    return str(file_name).split('.')[-1].lower()
-
-
 def parse_file(file_path):
     if os.path.splitext(file_path)[-1] == '.txt':
         return parse_text(file_path)
@@ -224,18 +220,6 @@ def is_in_order(arg1, arg2, list):
     any([arg1, arg2] == list[i:i + 2] for i in range(len(list) - 1))
 
 
-def _get_doc_hits(word):
-    try:
-        query = ("SELECT hit FROM indextable WHERE term=%s")
-        data = (word,)
-        ret = db.run_query(query, data, one=True)
-        if ret:
-            return ret[0]
-        return 0
-    except:
-        return 0
-
-
 def _get_post_id_by_term(word):
     try:
         query = ("SELECT postid FROM indextable WHERE term=%s")
@@ -274,8 +258,6 @@ def res_query(query):
             return ast.Set(words_dict[node.s])
 
     try:
-        global db
-        db.connect()
         hidden_files = list_hidden_files()
         operator = ['OR', 'AND', 'NOT']
         data = []
@@ -326,7 +308,6 @@ def res_query(query):
                 new_query += text + ' '
                 continue
             if len(text.split()) > 1:
-                # if len(text.replace('(', '').replace(')', '').split()) > 1:
                 new_query += '('
                 for word in text.split():
                     new_query += word + ' OR '
@@ -337,7 +318,6 @@ def res_query(query):
 
         # remove stop list terms
         query = new_query
-        quotes_words_indexs = []
         for word in new_query.split():
             for term in conf.STOP_LIST:
                 tmp_word = word.replace(')', '').replace('(', '').replace('"', '')
@@ -368,7 +348,6 @@ def res_query(query):
                                 query = query_helper
                                 break
 
-            quotes_words_indexs = []
         query = re.sub(' +', ' ', query)
         query = query.replace('$', ' ')
         # careful
@@ -429,7 +408,6 @@ def res_query(query):
         for doc_id in result:
             data.append(get_data_by_docid(doc_id, words_list))
 
-        db.disconnect()
         return utils.create_res_obj(data)
     except Exception as e:
         return utils.create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
@@ -526,9 +504,6 @@ def get_data_by_docid(doc_id, word_list):
 
 def delete_doc(docname):
     try:
-        # global db
-        # db.connect()
-        # cursor = db.cnx.cursor()
         postid_list = []
         query = ("SELECT path FROM doc_tbl WHERE docname=%s")
         data = (docname,)

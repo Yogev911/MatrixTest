@@ -61,35 +61,11 @@ class DB_Handler(object):
                                             success=False)
 
     def init_db(self):
-        query = "DELETE FROM `indextable`"
-        self.run_query(query)
-
-        query = "DELETE FROM `doc_tbl`"
-        self.run_query(query)
-
-        query = "DELETE FROM `postfiletable`"
-        self.run_query(query)
-
-        query = "ALTER TABLE indextable AUTO_INCREMENT = 1"
-        self.run_query(query)
-
-        query = "ALTER TABLE doc_tbl AUTO_INCREMENT = 1"
-        self.run_query(query)
-
-        query = "ALTER TABLE postfiletable AUTO_INCREMENT = 1"
-        self.run_query(query)
-
-        query = "DELETE FROM `hidden_files`"
-        self.run_query(query)
-
-        # target_uploads = os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.UPLOAD_FOLDER)
-        # files = [f for f in listdir(target_uploads) if isfile(os.path.join(target_uploads, f))]
-        # if files:
-        #     for file in files:
-        #         path = os.path.join(target_uploads, file)
-        #         print('delete file {}'.format(path))
-        #         os.remove(path)
-        # print('folder {} is empty'.format(target_uploads))
+        set_up_querys = ["DELETE FROM `indextable`", "DELETE FROM `doc_tbl`", "DELETE FROM `postfiletable`",
+                         "ALTER TABLE indextable AUTO_INCREMENT = 1", "ALTER TABLE postfiletable AUTO_INCREMENT = 1",
+                         "DELETE FROM `hidden_files`"]
+        for query in set_up_querys:
+            self.run_query(query)
 
     def run_query(self, query, params=None, one=False, many=False, commit=False):
         '''

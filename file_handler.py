@@ -9,8 +9,8 @@ import conf
 target_tmp = os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.TMP_FOLDER)
 target_uploads = os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.UPLOAD_FOLDER)
 
-def lisener():
 
+def lisener():
     filename_cache = []
     while True:
         print('searching for files....')
@@ -30,6 +30,3 @@ def lisener():
                 api_handler.res_upload_file(file, target_path)
                 os.remove(path)
         time.sleep(1)
-
-if __name__ == '__main__':
-    lisener()

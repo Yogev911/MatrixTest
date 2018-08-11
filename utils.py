@@ -1,4 +1,6 @@
 import json
+import os
+import conf
 
 
 def create_res_obj(data, success=True):
@@ -36,3 +38,12 @@ def chunks(l, n):
     for i in range(0, len(l), n):
         # Create an index range for l of n items:
         yield l[i:i + n]
+
+
+def validate_paths():
+    if not os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.TMP_FOLDER)):
+        os.makedirs(os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.TMP_FOLDER))
+    if not os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.UPLOAD_FOLDER)):
+        os.makedirs(os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.UPLOAD_FOLDER))
+    if not os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.UPLOAD_FOLDER)):
+        os.makedirs(os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.SCRAP_FOLDER))

@@ -10,9 +10,6 @@ import utils
 target = os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.TMP_FOLDER)
 
 
-# manager = Manager()
-# filename_cache = manager.list()
-
 def get_articles():
     with Manager() as manager:
         filename_cache = manager.list()
@@ -21,7 +18,7 @@ def get_articles():
                 for site in conf.SITES:
                     print(f'start working on site {site}')
                     paper = newspaper.build(site, memoize_articles=False)
-                    chunks = utils.chunks(paper.articles, conf.MAX_ITEMS)
+                    chunks = utils.chunks(paper.articles, conf.CHUNK)
                     pool = [Process(target=extract_article, args=(chunk, paper.brand, filename_cache)) for chunk in
                             chunks]
                     try:
@@ -55,7 +52,7 @@ def extract_article(article_chunks, brand, filename_cache):
                     article.title or article.authors or article.publish_date or article.summary or article.text):
                 raise ValueError('bad article!')
             article_file_name = re.sub('[^a-zA-Z0-9-_\s]+', '', article.title) + '.txt'
-            article_file_path = os.path.join('scrap_news', article_file_name)
+            article_file_path = os.path.join(conf.SCRAP_FOLDER, article_file_name)
             if os.path.exists(os.path.join(target, article_file_name)):
                 continue
             if article.title in filename_cache:

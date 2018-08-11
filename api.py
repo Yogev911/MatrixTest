@@ -1,19 +1,15 @@
+import os
 import json
 from flask_cors import CORS
 from flask import Flask, request, jsonify
-import os
+import traceback
+
 import api_handler
 import conf
-import traceback
-import threading
-import multiprocessing
-import scrap
 import utils
 
 app = Flask(__name__)
 CORS(app)
-
-APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 @app.route('/init', methods=['GET', 'POST'])
@@ -27,15 +23,13 @@ def init():
             success=False)
 
 
-@app.route('/search', methods=['GET', 'POST'])
+@app.route('/search', methods=['POST'])
 def search():
     if request.method == 'POST':
         query = request.form['query']
-        x = api_handler.res_query(query)
-        x = jsonify(x)
-        return x
-    elif request.method == 'GET':
-        return jsonify(api_handler.conf.OK_MESSAGE)
+        res_data = api_handler.res_query(query)
+        res_data = jsonify(res_data)
+        return res_data
 
 
 @app.route('/delete/<filename>', methods=['GET', 'POST'])
@@ -86,12 +80,11 @@ def getfile(filename):
             success=False)
 
 
-@app.route("/showall", methods=['GET', 'POST'])
+@app.route("/showall", methods=['POST'])
 def showall():
     if request.method == 'POST':
         return jsonify(api_handler.get_all_docs())
-    return jsonify(json.dumps({'msg': 'dude this is POST only!@'}))
 
 
 def run():
-    app.run(host='0.0.0.0', port='8080')
+    app.run(host=conf.HOST, port=conf.PORT)
