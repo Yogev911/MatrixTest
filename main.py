@@ -1,4 +1,4 @@
-import api
+import flask_api
 import file_handler
 import scrap
 import multiprocessing
@@ -17,5 +17,5 @@ if __name__ == '__main__':
     listener = multiprocessing.Process(target=file_handler.lisener)
     listener.start()
     print('Starting REST API')
-    api = multiprocessing.Process(target=api.run)
+    api = multiprocessing.Process(target=flask_api.run)
     api.start()

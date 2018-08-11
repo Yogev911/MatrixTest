@@ -45,5 +45,5 @@ def validate_paths():
         os.makedirs(os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.TMP_FOLDER))
     if not os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.UPLOAD_FOLDER)):
         os.makedirs(os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.UPLOAD_FOLDER))
-    if not os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.UPLOAD_FOLDER)):
+    if not os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.SCRAP_FOLDER)):
         os.makedirs(os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.SCRAP_FOLDER))

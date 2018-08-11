@@ -258,9 +258,13 @@ def res_query(query):
             return ast.Set(words_dict[node.s])
 
     try:
+
+        data = []
         hidden_files = list_hidden_files()
+
         operator = ['OR', 'AND', 'NOT']
         data = []
+
         query = query.replace("\'", "'")
 
         # check for more than one operator in a row
@@ -308,6 +312,7 @@ def res_query(query):
                 new_query += text + ' '
                 continue
             if len(text.split()) > 1:
+                # if len(text.replace('(', '').replace(')', '').split()) > 1:
                 new_query += '('
                 for word in text.split():
                     new_query += word + ' OR '
@@ -318,6 +323,7 @@ def res_query(query):
 
         # remove stop list terms
         query = new_query
+        quotes_words_indexs = []
         for word in new_query.split():
             for term in conf.STOP_LIST:
                 tmp_word = word.replace(')', '').replace('(', '').replace('"', '')
@@ -348,6 +354,7 @@ def res_query(query):
                                 query = query_helper
                                 break
 
+            quotes_words_indexs = []
         query = re.sub(' +', ' ', query)
         query = query.replace('$', ' ')
         # careful
@@ -377,8 +384,6 @@ def res_query(query):
                 processed_query += item
             processed_query += ' '
 
-        print(words_dict)
-        print(words_list)
         for k, v in words_dict.items():
             if k == 'stoppedword':
                 ast_list = create_ast_list([])

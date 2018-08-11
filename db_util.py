@@ -14,7 +14,7 @@ class DB_Handler(object):
         self._user = 'root'
         self._password = ''
         self._host = 'localhost'
-        self._database = 'dataretrieval'
+        self._database = 'matrix'
         self._port = '3306'
         self.cnx = self.connect()
 
