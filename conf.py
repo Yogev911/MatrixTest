@@ -1,5 +1,5 @@
 import re
-import traceback
+import json
 local_db = {
     'user': 'root',
     'password': '',
@@ -17,7 +17,8 @@ remote_db = {
 
 TEMPLATES = ['#Author name :',
              '#Year :',
-             '#Intro :']
+             '#Intro :',
+             '#URL :']
 
 REGEX = re.compile('[^a-zA-Z \']')
 
@@ -31,3 +32,5 @@ HIDDEN_FILES_ID = [12]
 HOST='localhost'
 
 SITES = ['https://edition.cnn.com/', 'http://www.foxnews.com/']
+
+OK_MESSAGE = json.dumps({'msg': 'True'})

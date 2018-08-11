@@ -6,7 +6,9 @@ import api_handler
 import conf
 import traceback
 import threading
+import multiprocessing
 import scrap
+import utils
 
 app = Flask(__name__)
 CORS(app)
@@ -17,10 +19,10 @@ APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 @app.route('/init', methods=['GET', 'POST'])
 def init():
     try:
-        api_handler.init_db()
-        return api_handler.create_res_obj({'status': 'init success'})
+        api_handler.db.init_db()
+        return utils.create_res_obj({'status': 'init success'})
     except Exception as e:
-        return api_handler.create_res_obj(
+        return utils.create_res_obj(
             {'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
             success=False)
 
@@ -33,7 +35,7 @@ def search():
         x = jsonify(x)
         return x
     elif request.method == 'GET':
-        return jsonify(api_handler.OK_MESSAGE)
+        return jsonify(api_handler.conf.OK_MESSAGE)
 
 
 @app.route('/delete/<filename>', methods=['GET', 'POST'])
@@ -43,7 +45,7 @@ def delete(filename):
         x = jsonify(x)
         return x
     except Exception as e:
-        return api_handler.create_res_obj(
+        return utils.create_res_obj(
             {'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
             success=False)
 
@@ -55,8 +57,8 @@ def hide(filename):
         x = jsonify(x)
         return x
     except Exception as e:
-        return api_handler.create_res_obj(
-            {'traceback': traceback.format_exc(), 'msg': "{}".format( e.args)},
+        return utils.create_res_obj(
+            {'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
             success=False)
 
 
@@ -67,7 +69,7 @@ def restore(filename):
         x = jsonify(x)
         return x
     except Exception as e:
-        return api_handler.create_res_obj(
+        return utils.create_res_obj(
             {'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
             success=False)
 
@@ -79,7 +81,7 @@ def getfile(filename):
         x = jsonify(x)
         return x
     except Exception as e:
-        return api_handler.create_res_obj(
+        return utils.create_res_obj(
             {'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
             success=False)
 
@@ -90,8 +92,9 @@ def showall():
         return jsonify(api_handler.get_all_docs())
     return jsonify(json.dumps({'msg': 'dude this is POST only!@'}))
 
+
 if __name__ == '__main__':
-    api_handler.init_db()
+    api_handler.db.init_db()
     # try:
     #     threading.Thread(target=api_handler.lisener, args=(conf.TMP_FOLDER,)).start()
     # except:
@@ -100,7 +103,10 @@ if __name__ == '__main__':
     #     threading.Thread(target=scrap.get_articles, args=()).start()
     # except:
     #     print(traceback.format_exc())
-    scrap.get_articles()
+    scrapper = multiprocessing.Process(target=scrap.get_articles)
+    scrapper.start()
+    listener = multiprocessing.Process(target=api_handler.lisener, args=(conf.TMP_FOLDER,))
+    listener.start()
+    # scrap.get_articles()
     # api_handler.lisener(conf.TMP_FOLDER)
     app.run(host='0.0.0.0', port='8080')
-

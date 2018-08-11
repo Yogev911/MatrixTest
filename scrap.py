@@ -1,41 +1,55 @@
+import re
+
 import newspaper
 import os
 import conf
 from time import sleep, time
 import api_handler
+import traceback
+
+
 def get_articles():
-    global article
-    target = os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.UPLOAD_FOLDER)
-    while True:
-        for site in conf.SITES:
-            paper = newspaper.build(site, memoize_articles=False)
-            for article in paper.articles:
-                try:
-                    if article.url.endswith('index.html'):
-                        print(article.url)
-                        article.download()
-                        article.parse()
-                        article_file_name = article.title + '.txt'
-                        article_file_path = os.path.join('tmp', article_file_name)
+    try:
+        target = os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.TMP_FOLDER)
+        while True:
+            for site in conf.SITES:
+                print(f'start working on site {site}')
+                paper = newspaper.build(site, memoize_articles=False)
+                for article in paper.articles:
+                    try:
+                        if article.url.endswith('index.html'):
+                            print(article.url)
+                            article.download()
+                            article.parse()
+                            if not (
+                                    article.title or article.authors or article.publish_date or article.summary or article.text):
+                                print('bad article!')
+                                continue
+                            article_file_name = re.sub('[^a-zA-Z0-9-_\s]+', '', article.title) + '.txt'
+                            article_file_path = os.path.join('scrap_news', article_file_name)
 
-                        with open(article_file_path, 'w') as f:
-                            pre_data = f'''# Author name : {str(article.authors)}
-# Year : {str(article.publish_date)}
-# Intro : {article.summary}'''
-                            f.write(pre_data + article.text)
+                            write_article(article, article_file_path)
+                            try:
+                                os.rename(article_file_path, os.path.join(target, article_file_name))
+                            except FileExistsError:
+                                print(f'duplicate file, removing {article_file_path}')
+                                os.remove(article_file_path)
+                    except:
+                        print(traceback.format_exc())
+                print(f'done with site {site}')
+    except:
+        print(traceback.format_exc())
 
-                        api_handler.res_upload_file(article_file_name, article_file_path)
-                        uuid = str(time()).split('.')[0]
-                        parsed_file_name = uuid + article_file_name
-                        os.rename(article_file_path, os.path.join(target,parsed_file_name))
-                        print(f'file {parsed_file_name} parsed and inserted to db.')
-                        sleep(0.5)
-                except:
-                    pass
+def write_article(article, article_file_path):
+    pre_data = f'''#Author name : {",".join(article.authors)}
+#Year : {str(article.publish_date)}
+#Intro : {article.summary}
+#URL : {article.url}
+'''
+    data = pre_data + article.text
+    with open(article_file_path, 'w', encoding='utf-8') as f:
+        f.write(data)
 
 
 if __name__ == '__main__':
     get_articles()
-
-
-

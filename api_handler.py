@@ -1,172 +1,25 @@
-import mysql.connector
 import traceback
-import json
 import ast
 import re
-import conf
+import os
 from os import listdir
 from os.path import isfile
 from shutil import copyfile
-
-OK_MESSAGE = json.dumps({'msg': 'True'})
-import os
 import time
 
-SAVE_PATH = 'uploads/'
-STOP_LIST = set(['json', 'txt', 'xlsx'])
-SPECIAL_CHARS = set(['.', ',', '(', ')', '(', '"'])
+from db_util import DB_Handler
+import utils
+import conf
 
-
-def create_res_obj(data, success=True):
-    '''
-    create return obj with array of data.
-    :param data: dict of 'data_obj'
-    :param success: json format for response
-    :return:
-    '''
-    return json.dumps({
-        "success": success,
-        "data": data
-    })
-
-
-def data_obj(author, content, docname, path):
-    '''
-    create node of data object
-    :param author: string
-    :param content: string
-    :param docname: string
-    :param path: string
-    :return: data_obj
-    '''
-    return {
-        "docname": docname,
-        "author": author,
-        "path": path,
-        "content": content
-    }
-
-
-class Singleton(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-
-
-class db_handler(object):
-    # __metaclass__ = Singleton
-
-    def __init__(self):
-        self.user = 'root'
-        self.password = ''
-        self.host = 'localhost'
-        self.database = 'dataretrieval'
-        self.port = '3306'
-        self.cnx = None
-
-    def connect(self):
-        try:
-            self.cnx = mysql.connector.connect(user=self.user,
-                                               password=self.password,
-                                               host=self.host,
-                                               database=self.database,
-                                               port=self.port)
-            print('yes!')
-        except Exception as e:
-            return create_res_obj({'traceback': traceback.format_exc(), 'msg': " {}".format( e.args)},
-                                  success=False)
-
-    def disconnect(self):
-        if self.cnx:
-            self.cnx.close()
-
-    # singelton
-    @property
-    def connection(self):
-        if self.cnx is None:
-            return self.connect()
-        return self.cnx
-
-    def get_all_tables(self):
-        query = "SHOW TABLES"
-        cursor = self.connection.cursor()
-        cursor.execute(query)
-        tables = cursor.fetchall()
-        return tables
-
-    def show_table(self, table_name):
-        query = "SELECT * FROM " + table_name
-        cursor = self.connection.cursor()
-        cursor.execute(query)
-        tables = []
-        tables = cursor.fetchall()
-        return tables
-
-    def drop_all_tables(self):
-        tables_names = []
-        cursor = self.connection.cursor()
-        tables_names = self.get_all_tables()
-        for table_name in tables_names:
-            str = ''.join(table_name)
-            try:
-                cursor.execute("drop table " + str)
-            except Exception as e:
-                return create_res_obj({'traceback': traceback.format_exc(),
-                                       'msg': "{}".format(e.args),
-                                       'text': "DROP TABLE failed WITH TABLE {} ".format(str)},
-                                      success=False)
-
-
-db = db_handler()
-
-
-def init_db():
-    global db
-    db.connect()
-    cursor = db.cnx.cursor()
-    query = "DELETE FROM `indextable`"
-    cursor.execute(query)
-    db.cnx.commit()
-    query = "DELETE FROM `doc_tbl`"
-    cursor.execute(query)
-    db.cnx.commit()
-    query = "DELETE FROM `postfiletable`"
-    cursor.execute(query)
-    db.cnx.commit()
-    query = "ALTER TABLE indextable AUTO_INCREMENT = 1"
-    cursor.execute(query)
-    db.cnx.commit()
-    query = "ALTER TABLE doc_tbl AUTO_INCREMENT = 1"
-    cursor.execute(query)
-    db.cnx.commit()
-    query = "ALTER TABLE postfiletable AUTO_INCREMENT = 1"
-    cursor.execute(query)
-    db.cnx.commit()
-    query = "DELETE FROM `hidden_files`"
-    cursor.execute(query)
-    db.cnx.commit()
-    target_uploads = os.path.join(os.path.dirname(os.path.abspath(__file__)), conf.UPLOAD_FOLDER)
-    files = [f for f in listdir(target_uploads) if isfile(os.path.join(target_uploads, f))]
-    if files:
-        for file in files:
-            path = os.path.join(target_uploads, file)
-            print('delete file {}'.format(path))
-            os.remove(path)
-    print('folder {} is empty'.format(target_uploads))
+db = DB_Handler()
 
 
 def res_upload_file(file_name, path):
     try:
-        global db
-        db.connect()
         text = parse_file(path)
         values = parse_text_to_dict(text)
         doc_id = update_words_to_db(values['words_dict'], file_name, path, values['author'], values['year'],
-                                    values['intro'])
-        db.disconnect()
+                                    values['intro'], values['url'])
         return {'docid': doc_id, 'docname': file_name, 'path': path, 'author': values['author'],
                 'year': values['year'], 'intro': values['intro'], 'content': text}
     except Exception as e:
@@ -180,32 +33,21 @@ def get_file_extention(file_name):
 def parse_file(file_path):
     if os.path.splitext(file_path)[-1] == '.txt':
         return parse_text(file_path)
-    # else:
-    #     return textract.process(file_path)
+    else:
+        return ''
 
 
-def index_text(text):
-    regex = re.compile('[^a-zA-Z \']')
-    text = regex.sub('', text)
-    text = ' '.join(text.split())
-    words_dict = {}
-    for line in text.split('\n'):
-        for word in line.split(' '):
-            # if word[-1:] == ',' or word[-1:] == ')' or word[-1:] == '(' or word[-1:] == '.': word = word[:-1]
-            if word[:1] == '\'': word = word[1:]
-            # if word == '' or word == ' ':
-            #     continue
-            if word not in words_dict:
-                words_dict[word] = 1
-            else:
-                words_dict[word] += 1
-    return words_dict
+def parse_text(file_name):
+    with open(file_name, 'r') as f:
+        data = f.read()
+    return data
 
 
 def parse_text_to_dict(text):
     author = ''
     year = ''
     intro = ''
+    url = ''
     words_dict = {}
     for line in text.split('\n'):
         if line.startswith(conf.TEMPLATES[0]):
@@ -214,6 +56,8 @@ def parse_text_to_dict(text):
             year = line.replace(conf.TEMPLATES[1], '').strip()
         elif line.startswith(conf.TEMPLATES[2]):
             intro = line.replace(conf.TEMPLATES[2], '').strip()
+        elif line.startswith(conf.TEMPLATES[3]):
+            url = line.replace(conf.TEMPLATES[3], '').strip()
         else:
             tmp_line = conf.REGEX.sub('', line).lower()
             for word in tmp_line.split(' '):
@@ -228,79 +72,48 @@ def parse_text_to_dict(text):
     values = {'words_dict': words_dict,
               'author': author,
               'year': year,
-              'intro': intro
-              }
+              'intro': intro,
+              'url': url}
     return values
 
 
-def parse_text(file_name):
-    file = open(file_name, 'r')
-    return file.read()
-    # with open(file_name, 'r').read().lower() as f:
-    #     return f
-
-
-def parse_doc(file_name):
-    (fi, fo, fe) = os.popen3('catdoc -w "%s"' % file_name)
-    fi.close()
-    retval = fo.read()
-    erroroutput = fe.read()
-    fo.close()
-    fe.close()
-    if not erroroutput:
-        return retval
-    else:
-        raise OSError("Executing the command caused an error: %s" % erroroutput)
-
-
 def _get_doc_id_by_file_name(docname):
-    docid = None
-    # print "working on {}".format(docname)
-    cursor = db.cnx.cursor()
     query = ("SELECT docid FROM doc_tbl WHERE docname=%s")
     data = (docname,)
-    cursor.execute(query, data)
+    ret = db.run_query(query, data, one=True)
     try:
-        ret = cursor.fetchone()
         docid = ret[0]
     except:
-        pass
+        docid = None
     if docid:
         return docid
     return 0
 
 
-def update_words_to_db(words_dict, file_name, path, author, year, intro):
+def update_words_to_db(words_dict, file_name, path, author, year, intro, url):
     if not _is_duplicated_file(file_name):
-        for key in sorted(words_dict.keys()): _update_word(key, words_dict[key], file_name, path,
-                                                               author, year, intro)
+        for key in sorted(words_dict.keys()):
+            _update_word(key, words_dict[key], file_name, path, author, year, intro, url)
     return _get_doc_id_by_file_name(file_name)
 
 
 def _is_duplicated_file(docname):
-    docid = None
-    cursor = db.cnx.cursor()
     query = ("SELECT docid FROM doc_tbl WHERE docname=%s")
     data = (docname,)
-    cursor.execute(query, data)
+    ret = db.run_query(query, data, one=True)
     try:
-        ret = cursor.fetchone()
         docid = ret[0]
     except:
-        pass
-    if docid:
-        return True
-    return False
+        docid = False
+    return bool(docid)
 
 
-def _update_word(term, term_hits, file_name, path, author, year, intro):
+def _update_word(term, term_hits, file_name, path, author, year, intro, url):
     try:
-        cursor = db.cnx.cursor()
         query = ("SELECT postid,hit FROM Indextable WHERE term=%s")
         data = (term,)
-        cursor.execute(query, data)
+        ret = db.run_query(query, data, one=True)
         try:
-            ret = cursor.fetchone()
             postid = ret[0]
             hit = ret[1]
         except:
@@ -308,15 +121,14 @@ def _update_word(term, term_hits, file_name, path, author, year, intro):
         if not ret:
             # found new term
             new_postid = _add_new_term(term)
-            docid = _insert_row_doc_tbl(file_name, author, path, year, intro)
+            docid = _insert_row_doc_tbl(file_name, author, path, year, intro, url)
             _insert_row_postfile_tbl(new_postid, term_hits, docid)
 
         else:
             # found term which is alreay exists
             _inc_hit_indextbl(hit, postid)
-            docid = _insert_row_doc_tbl(file_name, author, path, year, intro)
+            docid = _insert_row_doc_tbl(file_name, author, path, year, intro, url)
             _insert_row_postfile_tbl(postid, term_hits, docid)
-        cursor.close()
         return True
     except:
         print(traceback.format_exc())
@@ -352,60 +164,49 @@ def _inc_hit_indextbl(old_hit, postid):
     :param postid: postid to update
     :return: bool
     '''
-    cursor = db.cnx.cursor()
     new_hit = old_hit + 1
     query = ("UPDATE `indextable` SET `hit` = {} WHERE `indextable`.`postid` = %s").format(str(new_hit))
     data = (postid,)
-    cursor.execute(query, data)
-    db.cnx.commit()
-    cursor.close()
+    db.run_query(query, data, commit=True)
     return True
 
 
 def _insert_row_postfile_tbl(postid, term_hits, docid):
-    cursor = db.cnx.cursor()
     query = ("INSERT INTO postfiletable (postid, hit, docid) VALUES (%s , %s , %s)")
     data = (postid, term_hits, docid)
-    cursor.execute(query, data)
-    db.cnx.commit()
-    cursor.close()
+    db.run_query(query, data, commit=True)
     return True
 
 
-def _insert_row_doc_tbl(docname, author, path, year, intro):
+def _insert_row_doc_tbl(docname, author, path, year, intro, url):
     '''
     :param docname:
     :param author:
     :param path:
     :return: id of the row
     '''
-    docid = None
-    cursor = db.cnx.cursor()
     query = ("SELECT docid FROM doc_tbl WHERE path=%s")
     data = (path,)
-    cursor.execute(query, data)
+    ret = db.run_query(query, data, one=True)
     try:
-        ret = cursor.fetchone()
         docid = ret[0]
     except:
-        pass
+        docid = None
 
     if docid:
         return docid
     else:
-        query = ("INSERT INTO doc_tbl (docname, author,path, year, intro, hidden) VALUES (%s , %s , %s, %s , %s,%s)")
-        data = (docname, author, path, year, intro, 0)
-        cursor.execute(query, data)
-        db.cnx.commit()
+        query = ("INSERT INTO doc_tbl (docname, author,path, year, intro, hidden, url) VALUES (%s , %s , %s, %s , %s,%s,%s)")
+        data = (docname, author, path, year, intro, 0, url)
+        db.run_query(query, data, commit=True)
+
         query = ("SELECT docid FROM doc_tbl WHERE path=%s")
         data = (path,)
-        cursor.execute(query, data)
+        ret = db.run_query(query, data, one=True)
         try:
-            docid = cursor.fetchone()[0]
+            docid = ret[0]
         except:
             pass
-        db.cnx.commit()
-        cursor.close()
         return docid
 
 
@@ -426,33 +227,28 @@ def findWholeWord(w):
 def is_in_order(arg1, arg2, list):
     any([arg1, arg2] == list[i:i + 2] for i in range(len(list) - 1))
 
-    def _get_doc_hits(word):
-        try:
-            ret = None
-            cursor = db.cnx.cursor()
-            query = ("SELECT hit FROM indextable WHERE term=%s")
-            data = (word,)
-            cursor.execute(query, data)
-            ret = cursor.fetchone()
-            if ret:
-                return ret[0]
-            return 0
-        except:
-            return 0
+
+def _get_doc_hits(word):
+    try:
+        query = ("SELECT hit FROM indextable WHERE term=%s")
+        data = (word,)
+        ret = db.run_query(query, data, one=True)
+        if ret:
+            return ret[0]
+        return 0
+    except:
+        return 0
 
 
 def _get_post_id_by_term(word):
     try:
-        cursor = db.cnx.cursor()
         query = ("SELECT postid FROM indextable WHERE term=%s")
         data = (word,)
-        cursor.execute(query, data)
-        ret = cursor.fetchone()
+        ret = db.run_query(query, data, one=True)
         try:
-            cursor.fetchall()
+            return ret[0]
         except:
-            pass
-        return ret[0]
+            return 0
     except:
         return 0
 
@@ -464,14 +260,8 @@ def _get_word_weight(doc, words):
         for postid in post_ids:
             query = ("SELECT hit FROM postfiletable WHERE postid=%s and docid =%s")
             data = (postid, doc,)
-            cursor = db.cnx.cursor()
-            cursor.execute(query, data)
-            ret = cursor.fetchone()
+            ret = db.run_query(query, data, one=True)
             doc_weight += ret[0]
-            try:
-                cursor.fetchall()
-            except:
-                pass
         return doc, doc_weight
     except:
         return doc, 0
@@ -490,13 +280,9 @@ def res_query(query):
     try:
         global db
         db.connect()
-        data = []
         hidden_files = list_hidden_files()
-
         operator = ['OR', 'AND', 'NOT']
         data = []
-
-        # query = 'hi two "two birds in the sky" my "hello\'"     name AND is OR (yogev   "heskia\'" dfk)   OR ("hiii" OR (bla OR boom)) NOT hi two "two" hello are'
         query = query.replace("\'", "'")
 
         # check for more than one operator in a row
@@ -507,7 +293,7 @@ def res_query(query):
                 if not is_in_order(first, second, splited_query):
                     duplicate_op_counter += 1
         if duplicate_op_counter < 9:
-            # bad query detet
+            # bad query detect
             for op in operator:
                 query = re.sub(r'\b' + op + r'\b', ' ', query)
 
@@ -648,10 +434,10 @@ def res_query(query):
             data.append(get_data_by_docid(doc_id, words_list))
 
         db.disconnect()
-        return create_res_obj(data)
+        return utils.create_res_obj(data)
     except Exception as e:
-        return create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format( e.args)},
-                              success=False)
+        return utils.create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
+                                    success=False)
 
 
 def create_ast_list(num_list):
@@ -664,7 +450,6 @@ def create_ast_list(num_list):
 
 
 def get_doc_list_by_term(term, hidden_files, words_list):
-    postid = None
     term = term.replace('*', '%')
     doc_list = []
     cursor = db.cnx.cursor()
@@ -680,9 +465,6 @@ def get_doc_list_by_term(term, hidden_files, words_list):
         for word in new_words:
             if word not in words_list:
                 words_list.append(word)
-        # ret = cursor.fetchone()
-        # postid = ret[0]
-        # cursor.fetchall()
     except:
         pass
     for postid in post_ids:
@@ -696,7 +478,7 @@ def get_doc_list_by_term(term, hidden_files, words_list):
                 doc_list.append(row[0])
         except:
             pass
-
+    cursor.close()
     new_list = [doc for doc in doc_list if doc not in hidden_files]
     return new_list
 
@@ -707,12 +489,10 @@ def get_data_by_docid(doc_id, word_list):
     author = None
     year = None
     intro = None
-    cursor = db.cnx.cursor()
     query = ("SELECT docid,docname,author,path,year,intro, hidden FROM doc_tbl WHERE docid =%s")
     data = (doc_id,)
-    cursor.execute(query, data)
     try:
-        ret = cursor.fetchone()
+        ret = db.run_query(query, data, one=True)
         docid = ret[0]
         docname = ret[1]
         author = ret[2]
@@ -750,92 +530,53 @@ def get_data_by_docid(doc_id, word_list):
 
 def delete_doc(docname):
     try:
-        global db
-        db.connect()
-        cursor = db.cnx.cursor()
+        # global db
+        # db.connect()
+        # cursor = db.cnx.cursor()
         postid_list = []
         query = ("SELECT path FROM doc_tbl WHERE docname=%s")
         data = (docname,)
-        cursor.execute(query, data)
-        doc_path = cursor.fetchone()[0]
+        doc_path = db.run_query(query, data, one=True)[0]
         query = ("SELECT docid FROM doc_tbl WHERE path=%s")
         data = (doc_path,)
-        cursor.execute(query, data)
-        docid = cursor.fetchone()[0]
+        docid = db.run_query(query, data, one=True)[0]
         query = ("SELECT postid FROM postfiletable WHERE docid=%s")
         data = (docid,)
-        cursor.execute(query, data)
-        for row in cursor:
+        for row in db.run_query(query, data):
             postid_list.append(row[0])
         for postid in postid_list:
             query = ("SELECT hit FROM indextable WHERE postid=%s")
             data = (postid,)
-            cursor.execute(query, data)
-            hit = cursor.fetchone()[0]
+            hit = db.run_query(query, data, one=True)[0]
             if hit == 1:
                 query = ("DELETE FROM indextable WHERE postid=%s")
                 data = (postid,)
-                cursor.execute(query, data)
-                db.cnx.commit()
+                db.run_query(query, data, commit=True)
             else:
                 new_hit = hit - 1
                 query = ("UPDATE `indextable` SET `hit` = {} WHERE `indextable`.`postid` = %s").format(str(new_hit))
                 data = (postid,)
-                cursor.execute(query, data)
-                db.cnx.commit()
+                db.run_query(query, data, commit=True)
         query = ("DELETE FROM postfiletable WHERE docid=%s")
         data = (docid,)
-        cursor.execute(query, data)
+        db.run_query(query, data, commit=True)
         query = ("DELETE FROM doc_tbl WHERE docid=%s")
         data = (docid,)
-        cursor.execute(query, data)
+        db.run_query(query, data, commit=True)
         query = ("DELETE FROM hidden_files WHERE docid=%s")
         data = (docid,)
-        cursor.execute(query, data)
+        db.run_query(query, data, commit=True)
         if os.path.exists(doc_path):
             os.remove(doc_path)
-        db.cnx.commit()
-        db.disconnect()
-
-        return create_res_obj(data)
+        return utils.create_res_obj(data)
     except Exception as e:
-        return create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
-                              success=False)
-
-
-def lisener(tmp_folder):
-    target_tmp = os.path.join(os.path.dirname(os.path.abspath(__file__)), tmp_folder)
-    if not os.path.exists(target_tmp):
-        os.makedirs(target_tmp)
-    while True:
-        print('searching for files....')
-        files = [f for f in listdir(target_tmp) if isfile(os.path.join(target_tmp, f))]
-        if files:
-            print('found file!')
-            target = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
-            print(target)
-            for file in files:
-                path = os.path.join(target_tmp, file)
-                print('working on file{}'.format(path))
-                uuid = str(time.time()).split('.')[0]
-                filename = uuid + file
-                target_path = os.path.join(target, filename)
-                copyfile(path, target_path)
-                res_upload_file(file, target_path)
-                os.remove(path)
-        time.sleep(5)
-
-
-def scrapper():
-    pass
+        return utils.create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
+                                    success=False)
 
 
 def hide_doc(docname):
     try:
-        global db
-        db.connect()
         cursor = db.cnx.cursor()
-
         query = ("SELECT docid FROM doc_tbl WHERE docname=%s")
         data = (docname,)
         cursor.execute(query, data)
@@ -858,18 +599,15 @@ def hide_doc(docname):
             data = [{'file_hidden': 'True'}]
         else:
             data = [{'file_hidden': 'False'}]
-        db.disconnect()
-
-        return create_res_obj(data)
+        cursor.close()
+        return utils.create_res_obj(data)
     except Exception as e:
-        return create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format( e.args)},
-                              success=False)
+        return utils.create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
+                                    success=False)
 
 
 def get_all_docs():
     try:
-        global db
-        db.connect()
         data = []
         cursor = db.cnx.cursor()
         query = "SELECT * FROM doc_tbl"
@@ -884,20 +622,16 @@ def get_all_docs():
                 'intro': row[5],
                 'hidden': row[6],
                 'content': open(row[3], 'r').read()
-
             })
-
-        db.disconnect()
-        return create_res_obj(data)
+        cursor.close()
+        return utils.create_res_obj(data)
     except Exception as e:
-        return create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
-                              success=False)
+        return utils.create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
+                                    success=False)
 
 
 def restore_doc(docname):
     try:
-        global db
-        db.connect()
         cursor = db.cnx.cursor()
 
         query = ("SELECT docid FROM doc_tbl WHERE docname=%s")
@@ -922,25 +656,20 @@ def restore_doc(docname):
             data = [{'file_restored': 'True'}]
         else:
             data = [{'file_restored': 'False'}]
-        db.disconnect()
-
-        return create_res_obj(data)
+        cursor.close()
+        return utils.create_res_obj(data)
     except Exception as e:
-        return create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
-                              success=False)
+        return utils.create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
+                                    success=False)
 
 
 def getfile(docname):
-    global db
-    db.connect()
-    cursor = db.cnx.cursor()
     query = ("SELECT * FROM doc_tbl WHERE docname=%s")
     data = (docname,)
-    cursor.execute(query, data)
     try:
-        row = cursor.fetchone()
+        row = db.run_query(query, data, one=True)
         db.disconnect()
-        return create_res_obj({
+        return utils.create_res_obj({
             'docid': row[0],
             'docname': row[1],
             'author': row[2],
@@ -953,5 +682,27 @@ def getfile(docname):
         })
 
     except Exception as e:
-        return create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
-                              success=False)
+        return utils.create_res_obj({'traceback': traceback.format_exc(), 'msg': "{}".format(e.args)},
+                                    success=False)
+
+
+def lisener(tmp_folder):
+    target_tmp = os.path.join(os.path.dirname(os.path.abspath(__file__)), tmp_folder)
+    if not os.path.exists(target_tmp):
+        os.makedirs(target_tmp)
+    while True:
+        print('searching for files....')
+        files = [f for f in listdir(target_tmp) if isfile(os.path.join(target_tmp, f))]
+        if files:
+            target = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+            print(target)
+            for file in files:
+                path = os.path.join(target_tmp, file)
+                print('working on file{}'.format(path))
+                uuid = str(time.time()).split('.')[0]
+                filename = uuid + file
+                target_path = os.path.join(target, filename)
+                copyfile(path, target_path)
+                res_upload_file(file, target_path)
+                os.remove(path)
+        time.sleep(1)
