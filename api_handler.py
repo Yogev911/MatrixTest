@@ -705,4 +705,4 @@ def lisener(tmp_folder):
                 copyfile(path, target_path)
                 res_upload_file(file, target_path)
                 os.remove(path)
-        time.sleep(1)
+        time.sleep(10)

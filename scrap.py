@@ -1,11 +1,11 @@
+import traceback
 import re
+from time import sleep
 
 import newspaper
+
 import os
 import conf
-from time import sleep, time
-import api_handler
-import traceback
 
 
 def get_articles():
@@ -19,12 +19,12 @@ def get_articles():
                     try:
                         if article.url.endswith('index.html'):
                             print(article.url)
+                            sleep(10)
                             article.download()
                             article.parse()
                             if not (
                                     article.title or article.authors or article.publish_date or article.summary or article.text):
-                                print('bad article!')
-                                continue
+                                raise ValueError('bad article!')
                             article_file_name = re.sub('[^a-zA-Z0-9-_\s]+', '', article.title) + '.txt'
                             article_file_path = os.path.join('scrap_news', article_file_name)
 
