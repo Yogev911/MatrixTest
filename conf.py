@@ -34,3 +34,6 @@ HOST='localhost'
 SITES = ['https://edition.cnn.com/', 'http://www.foxnews.com/']
 
 OK_MESSAGE = json.dumps({'msg': 'True'})
+
+
+MAX_ITEMS = 200
